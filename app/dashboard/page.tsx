@@ -36,7 +36,7 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
       {/* Question form (dashboard ke andar) */}
-      <ClientSolveForm onSolved={load} />
+      <ClientSolveForm />
 
       <section className="rounded-xl border p-4">
         <h2 className="font-semibold">Recent answers</h2>
