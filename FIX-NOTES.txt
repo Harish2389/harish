@@ -1,0 +1,1 @@
+Removed login (NextAuth) and payments (Razorpay). Updated DB schema, routes, and UI.
