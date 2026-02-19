@@ -1,40 +1,66 @@
-import ClientSolveForm from "@/components/ClientSolveForm";
-import { prisma } from "@/src/lib/prisma";
+"use client";
 
-export default async function DashboardPage() {
-  const recent = await prisma.submission.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+import { useEffect, useState } from "react";
+import ClientSolveForm from "@/components/ClientSolveForm";
+
+type Item = {
+  id: string;
+  question: string;
+  answer: string;
+  createdAt: string;
+};
+
+export default function DashboardPage() {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/history", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      setItems(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border p-5">
-        <div className="text-sm text-zinc-600">
-          No login needed. Free daily limit applies per device/IP.
-        </div>
-      </div>
+    <main className="mx-auto max-w-3xl p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      <ClientSolveForm />
+      {/* Question form (dashboard ke andar) */}
+      <ClientSolveForm onSolved={load} />
 
-      <div className="rounded-2xl border p-5">
-        <h2 className="font-semibold">Recent answers (latest 10)</h2>
-        {recent.length === 0 ? (
-          <div className="mt-2 text-sm text-zinc-600">No history yet.</div>
+      <section className="rounded-xl border p-4">
+        <h2 className="font-semibold">Recent answers</h2>
+
+        {loading ? (
+          <p className="text-sm text-zinc-600 mt-2">Loading...</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-zinc-600 mt-2">No submissions yet.</p>
         ) : (
           <div className="mt-3 space-y-3">
-            {recent.map((h) => (
-              <div key={h.id} className="rounded-xl border p-3">
-                <div className="text-sm font-medium">Q: {h.question}</div>
-                <div className="mt-2 text-sm whitespace-pre-wrap text-zinc-700">{h.answer}</div>
-                <div className="mt-2 text-xs text-zinc-500">
-                  {h.createdAt.toISOString().slice(0,19).replace("T"," ")}
+            {items.map((it) => (
+              <div key={it.id} className="rounded-lg border p-3">
+                <div className="text-xs text-zinc-500">
+                  {new Date(it.createdAt).toLocaleString()}
+                </div>
+                <div className="mt-2 text-sm font-medium">Q: {it.question}</div>
+                <div className="mt-2 text-sm whitespace-pre-wrap text-zinc-700">
+                  {it.answer}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

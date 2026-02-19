@@ -1,36 +1,66 @@
 import { NextResponse } from "next/server";
-import { checkAndIncrementUsage } from "@/src/lib/usage";
 import { groqSolve } from "@/src/lib/groq";
-import { prisma } from "@/src/lib/prisma";
+import { checkAndIncrementUsage } from "@/src/lib/usage";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type Item = {
+  id: string;
+  question: string;
+  answer: string;
+  createdAt: string;
+};
+
+const g = globalThis as unknown as { __HISTORY__?: Item[] };
+if (!g.__HISTORY__) g.__HISTORY__ = [];
 
 function getIp(req: Request) {
   const xf = req.headers.get("x-forwarded-for");
   if (xf) return xf.split(",")[0].trim();
-  return "local";
+  return "unknown";
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const question = String(body.question ?? "").trim();
-  if (!question)
-    return NextResponse.json({ error: "Question is required." }, { status: 400 });
-
-  const ip = getIp(req);
-  const usage = checkAndIncrementUsage(ip);
-  if (!usage.ok) {
-    return NextResponse.json({ error: "LIMIT_REACHED", limit: usage.limit }, { status: 429 });
-  }
-
-  // Wrap the Groq API call and DB write in a try/catch so that any runtime errors are
-  // reported back as JSON. Without this, an unhandled exception would cause the
-  // endpoint to return an HTML error page, which breaks JSON parsing in the client.
   try {
+    const body = await req.json().catch(() => ({}));
+    const question = String(body?.question || "").trim();
+    if (!question) {
+      return NextResponse.json({ error: "Question required" }, { status: 400 });
+    }
+
+    const ip = getIp(req);
+    const usage = checkAndIncrementUsage(ip);
+
+    if (!usage.ok) {
+      return NextResponse.json(
+        { error: "LIMIT_REACHED", limit: usage.limit },
+        { status: 429 }
+      );
+    }
+
     const answer = await groqSolve(question);
-    await prisma.submission.create({ data: { ip, question, answer } });
-    return NextResponse.json({ answer, remaining: usage.remaining });
-  } catch (error: any) {
-    console.error(error);
-    const message = typeof error?.message === "string" ? error.message : "Server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+
+    const item: Item = {
+      id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      question,
+      answer,
+      createdAt: new Date().toISOString(),
+    };
+
+    g.__HISTORY__!.unshift(item);
+    g.__HISTORY__ = g.__HISTORY__!.slice(0, 10);
+
+    return NextResponse.json({
+      answer,
+      remaining: usage.remaining,
+      limit: usage.limit,
+    });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json(
+      { error: e?.message || "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
