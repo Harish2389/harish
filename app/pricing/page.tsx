@@ -1,18 +1,33 @@
-export const metadata = {
-  title: "Pricing",
-};
+"use client";
 
-// This simple page explains that there is currently no paid tier. All functionality
-// is free to use because login and payment flows have been removed.
 export default function PricingPage() {
+  const pay = async () => {
+    const res = await fetch("/api/stripe/checkout", { method: "POST" });
+    const data = await res.json();
+
+    if (data?.url) window.location.href = data.url;
+    else alert(data?.error || "Payment error");
+  };
+
   return (
-    <div className="max-w-xl space-y-4">
-      <h1 className="text-2xl font-bold">Pricing</h1>
-      <p className="text-sm text-zinc-700">
-        At the moment there is no paid version of AI Homework Helper. All features are
-        available for free with a daily usage limit. If we introduce a premium tier in
-        the future we will update this page with details.
-      </p>
+    <div style={{ padding: 24 }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Pricing</h1>
+      <p style={{ marginTop: 8 }}>Get premium access</p>
+
+      <button
+        onClick={pay}
+        style={{
+          marginTop: 16,
+          padding: "10px 16px",
+          borderRadius: 10,
+          background: "black",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Buy Now
+      </button>
     </div>
   );
 }
