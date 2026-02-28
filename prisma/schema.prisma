@@ -1,6 +1,6 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
@@ -29,4 +29,12 @@ model CashfreeOrder {
   status    String   @default("CREATED") // CREATED | PAID | FAILED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
 }
